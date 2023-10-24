@@ -88,31 +88,30 @@ impl Aig {
         let _ = lines
             .enumerate()
             .map(|(count, content)| {
-                let content = content.to_string();
-                let number = count + 1;
-
-                println!("number: {number}");
-
-                if number <= aig.header.number_of_inputs {
-                    println!("adiciona entrada");
-                    aig.process_input_line(content.to_owned())
-                } else if number <= aig.header.number_of_inputs + aig.header.number_of_outputs {
-                    println!("adiciona saida");
-                    aig.process_output_line(content.to_owned())
-                } else if number
-                    <= aig.header.number_of_inputs
-                        + aig.header.number_of_outputs
-                        + aig.header.number_of_ands
-                {
-                    println!("adiciona and");
-                    aig.process_and_line(content.to_owned())
-                }
+                aig.process_line(content, count);
             })
             .collect::<()>();
 
         println!("{aig:?}");
 
         aig
+    }
+
+    fn process_line(&mut self, content: &str, count: usize) {
+        let content = content.to_string();
+        let line_number = count + 1;
+
+        let number_of_inputs = self.header.number_of_inputs;
+        let number_of_outputs = self.header.number_of_outputs;
+        let number_of_ands = self.header.number_of_ands;
+
+        if line_number <= number_of_inputs {
+            self.process_input_line(content.to_owned())
+        } else if line_number <= number_of_inputs + number_of_outputs {
+            self.process_output_line(content.to_owned())
+        } else if line_number <= number_of_inputs + number_of_outputs + number_of_ands {
+            self.process_and_line(content.to_owned())
+        }
     }
 
     fn process_input_line(&mut self, line: String) {
@@ -122,7 +121,7 @@ impl Aig {
     }
 
     fn process_output_line(&mut self, line: String) {
-        println!("in={line}");
+        println!("out={line}");
         let output = line.parse::<usize>().expect("Error parsing output line");
         self.outputs.push(output)
     }
