@@ -52,4 +52,22 @@ impl Header {
         self.number_of_ands = number_of_ands;
         // println!("connect pin={number_of_ands}");
     }
+
+    pub fn generate_verilog_module_header(&self) -> String {
+        let mut interface = String::new();
+
+        for input in 1..=self.number_of_inputs {
+            interface.push_str(format!("n{}, ", input * 2).as_str())
+        }
+
+        for output in 1..=self.number_of_outputs {
+            interface.push_str(format!("n{}o, ", output * 2).as_str())
+        }
+
+        // Remove last ", "
+        interface.pop();
+        interface.pop();
+
+        interface
+    }
 }

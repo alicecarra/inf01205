@@ -1,3 +1,7 @@
+use std::collections::HashSet;
+
+use log::debug;
+
 pub(crate) use crate::header::Header;
 
 #[derive(Clone, Debug)]
@@ -52,13 +56,13 @@ impl Aig {
     }
 
     fn process_input_line(&mut self, line: String) {
-        // println!("in={line}");
+        debug!("in={line}");
         let input = line.parse::<usize>().expect("Error parsing input line");
         self.inputs.push(input)
     }
 
     fn process_output_line(&mut self, line: String) {
-        // println!("out={line}");
+        debug!("out={line}");
         let output = line.parse::<usize>().expect("Error parsing output line");
         self.outputs.push(output)
     }
@@ -70,21 +74,21 @@ impl Aig {
             .expect("Incomplete and line. Missing Output.")
             .parse::<usize>()
             .expect("Error parsing and line.");
-        // println!("connect pin={output}");
+        debug!("connect pin={output}");
 
         let input_0 = splitter
             .next()
             .expect("Incomplete and line. Missing child 0.")
             .parse::<usize>()
             .expect("Error parsing and line");
-        // println!("connect pin={input_0}");
+        debug!("connect pin={input_0}");
 
         let input_1 = splitter
             .next()
             .expect("Incomplete and line. Missing child 1.")
             .parse::<usize>()
             .expect("Error parsing and line");
-        // println!("connect pin={input_1}");
+        debug!("connect pin={input_1}");
 
         let index = output / 2;
 
@@ -140,6 +144,7 @@ impl Aig {
             let child_0 = aig.child_0.get(and_index).unwrap();
             let child_1 = aig.child_1.get(and_index).unwrap();
 
+            //                                  Get delay of child                  Check if is inverted
             let child_0_delay = delays.get(child_0 / 2).unwrap() + ((child_0 % 2) * inversor_delay);
             let child_1_delay = delays.get(child_1 / 2).unwrap() + ((child_1 % 2) * inversor_delay);
 
@@ -164,5 +169,71 @@ impl Aig {
         }
 
         delays
+    }
+
+    pub fn generate_verilog_module(&self, module_name: String) -> String {
+        let mut content = String::new();
+
+        let number_of_inputs = self.header.number_of_inputs;
+        let number_of_ands = self.header.number_of_ands;
+
+        // Header
+        content.push_str(
+            format!(
+                "module {module_name} ({});\n",
+                self.header.generate_verilog_module_header()
+            )
+            .as_str(),
+        );
+
+        // Inputs
+        for input in 1..=self.header.number_of_inputs {
+            content.push_str(format!("input n{};\n", input * 2).as_str())
+        }
+
+        // Outputs
+        for output in 1..=self.header.number_of_outputs {
+            content.push_str(format!("output n{};\n", output * 2).as_str())
+        }
+
+        content.push_str("\n");
+
+        // Wires
+        let mut wires = HashSet::new();
+        for and_index in number_of_inputs + 1..=number_of_inputs + number_of_ands {
+            let child_0 = self.child_0.get(and_index).unwrap();
+            let child_1 = self.child_1.get(and_index).unwrap();
+
+            wires.insert(child_0);
+            wires.insert(child_1);
+        }
+        for wire in wires.iter() {
+            content.push_str(format!("wire w{wire};\n",).as_str())
+        }
+
+        content.push_str("\n");
+
+        // Inversors
+        for wire in wires.iter() {
+            if (*wire % 2) == 1 {
+                content.push_str(format!("not(n{wire}, n{});\n", *wire - 1).as_str())
+            }
+        }
+
+        content.push_str("\n");
+
+        // Ands
+        for and_index in number_of_inputs + 1..=number_of_inputs + number_of_ands {
+            let child_0 = self.child_0.get(and_index).unwrap();
+            let child_1 = self.child_1.get(and_index).unwrap();
+
+            content.push_str(format!("and(n{}, n{child_0}, n{child_1});\n", and_index * 2).as_str())
+        }
+
+        content.push_str("endmodule\n");
+
+        // TODO: fix output node declaration
+        // Connect output using buffer and inversor
+        content
     }
 }

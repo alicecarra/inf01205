@@ -13,6 +13,9 @@ fn main() {
 
     let delays = aig.generate_delays(input_delay, inversor_delay, and_delay);
     let max_delay = get_max_delay(delays);
+    println!("Max delay: {max_delay}");
 
-    println!("Max delay: {max_delay}")
+    let verilog = aig.generate_verilog_module("Aig".to_string());
+
+    println!("{verilog}")
 }
